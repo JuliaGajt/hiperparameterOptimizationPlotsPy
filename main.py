@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
+from matplotlib.ticker import FuncFormatter
 
 def load_all_csv_from_folder(base_path):
     csv_files = [os.path.join(base_path, f) for f in os.listdir(base_path) if f.endswith('.csv')]
@@ -89,7 +90,7 @@ def plot_better(data, variable, error, variable_label):
     bar_width = 0.25
     index = range(len(variables))
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(9, 4))
 
     for i, var in enumerate(variables):
         # data_final = data[((data[variable] == var) | (data['Tuned'] == 0)) & (data['Hyper_param_method'] != 'SA')]
@@ -97,9 +98,9 @@ def plot_better(data, variable, error, variable_label):
         better, same, worse = plot_better_results(data_final, error)
 
         # Ustawienie pozycji słupków
-        ax.bar(i - bar_width, better, bar_width, color='green', label='Lepsze od niezoptymalizowanego modelu' if i == 0 else "")
-        ax.bar(i, same, bar_width, color='blue', label='Takie same jak niezoptymalizowany model' if i == 0 else "")
-        ax.bar(i + bar_width, worse, bar_width, color='red', label='Gorsze od niezoptymalizowanego modelu' if i == 0 else "")
+        ax.bar(i - bar_width, better, bar_width, color='green', label='Lepsze od \nniezoptymalizowanego modelu' if i == 0 else "")
+        ax.bar(i, same, bar_width, color='blue', label='Takie same jak \nniezoptymalizowany model' if i == 0 else "")
+        ax.bar(i + bar_width, worse, bar_width, color='red', label='Gorsze od \nniezoptymalizowanego modelu' if i == 0 else "")
 
         # Dodanie wartości na słupkach
         ax.text(i - bar_width, better + 0.1, str(better), ha='center', va='bottom')
@@ -117,8 +118,10 @@ def plot_better(data, variable, error, variable_label):
         if variables2labels[i] == 'RepeatedHoldOut':
             variables2labels[i] = 'MonteCarlo'
     ax.set_xticklabels(variables2labels, rotation=45)
-    ax.legend()
+
+    ax.legend(fontsize=10, loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
     ax.grid(True)
+    # plt.tight_layout(pad=2.0)  # Dostosowanie paddingu
 
     plt.tight_layout()
     plt.show()
@@ -146,22 +149,40 @@ def time_plot(dataset, dataset1, dataset2, variable, variable_name_for_plot):
             averages.append(mean_time)
         return variables, averages
 
+    def comma_format(x, pos):
+        return f'{x:.2f}'.replace('.', ',')
+
     variables, averages = calculate_averages(dataset)
     variables1, averages1 = calculate_averages(dataset1)
     variables2, averages2 = calculate_averages(dataset2)
-    plt.figure(figsize=(10, 6))
+    for i in range(len(variables)):
+        if variables[i] == 'OPTUNA':
+            variables[i] = 'TPE'
+        if variables[i] == 'RepeatedHoldOut':
+            variables[i] = 'MonteCarlo'
+    plt.figure(figsize=(9, 5))
     plt.plot(variables, averages, marker='o', linestyle='-', linewidth=2, label=f'n_splits = 3')
-    plt.plot(variables1, averages1, marker='s', linestyle='--', linewidth=2,
+    plt.plot(variables, averages1, marker='s', linestyle='--', linewidth=2,
              label=f'n_splits = 5')
-    plt.plot(variables2, averages2, marker='s', linestyle='-', linewidth=2,
+    plt.plot(variables, averages2, marker='s', linestyle='-', linewidth=2,
              label=f'n_splits = 10')
 
-    plt.xlabel(variable_name_for_plot)
-    plt.ylabel('Average Time (minutes)')
-    plt.grid(True)
-    plt.legend()
-    plt.show()
+    # Ustawienia osi
+    plt.ylabel('Średni czas (w minutach)', fontsize=14)
+    plt.xlabel('Metoda', fontsize=14)
 
+    # Zwiększenie czcionki dla osi X i Y
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+
+    # Zastosowanie formatera zamieniającego "." na ","
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(comma_format))
+
+    # Dodanie siatki, legendy i wyświetlenie wykresu
+    plt.grid(True)
+    plt.legend(fontsize=14)
+    plt.tight_layout()
+    plt.show()
 
 def bar_plot(df, variable):
     plt.clf()
@@ -199,28 +220,28 @@ if __name__ == '__main__':
     df1 = load_all_csv_from_folder('ml-tuning-08-09-2024-splits-5')
     df2 = load_all_csv_from_folder('ml-tuning-08-16-2024-splits-10')
 
-    time_plot(df, df1, df2, 'Validation_method', '')
     time_plot(df, df1, df2, 'Hyper_param_method', '')
+    time_plot(df, df1, df2, 'Validation_method', '')
 
-    plot_better(df, 'Hyper_param_method', 'MAE', 'metody optymalizacji')
-    plot_better(df, 'Validation_method', 'MAE', 'metody walidacji')
-    plot_better(df1, 'Hyper_param_method', 'MAE', 'metody optymalizacji')
-    plot_better(df1, 'Validation_method', 'MAE', 'metody walidacji')
-    plot_better(df2, 'Hyper_param_method', 'MAE', 'metody optymalizacji')
-    plot_better(df2, 'Validation_method', 'MAE', 'metody walidacji')
-
-    boxplot_generator(df, 'Hyper_param_method', 'MAE', 'metod optymalizacji')
-    boxplot_generator(df1, 'Hyper_param_method', 'MAE', 'metod optymalizacji')
-    boxplot_generator(df2, 'Hyper_param_method', 'MAE', 'metod optymalizacji')
-    boxplot_generator(df, 'Validation_method', 'MAE', 'metod walidacji')
-    boxplot_generator(df1, 'Validation_method', 'MAE', 'metod walidacji')
-    boxplot_generator(df2, 'Validation_method', 'MAE', 'metod walidacji')
-
-    bar_plot(df, 'Validation_method')
-    bar_plot(df1, 'Validation_method')
-    bar_plot(df2, 'Validation_method')
-    bar_plot(df, 'Hyper_param_method')
-    bar_plot(df1, 'Hyper_param_method')
-    bar_plot(df2, 'Hyper_param_method')
+    # plot_better(df, 'Hyper_param_method', 'MAE', 'metody optymalizacji')
+    # plot_better(df, 'Validation_method', 'MAE', 'metody walidacji')
+    # plot_better(df1, 'Hyper_param_method', 'MAE', 'metody optymalizacji')
+    # plot_better(df1, 'Validation_method', 'MAE', 'metody walidacji')
+    # plot_better(df2, 'Hyper_param_method', 'MAE', 'metody optymalizacji')
+    # plot_better(df2, 'Validation_method', 'MAE', 'metody walidacji')
+    #
+    # boxplot_generator(df, 'Hyper_param_method', 'MAE', 'metod optymalizacji')
+    # boxplot_generator(df1, 'Hyper_param_method', 'MAE', 'metod optymalizacji')
+    # boxplot_generator(df2, 'Hyper_param_method', 'MAE', 'metod optymalizacji')
+    # boxplot_generator(df, 'Validation_method', 'MAE', 'metod walidacji')
+    # boxplot_generator(df1, 'Validation_method', 'MAE', 'metod walidacji')
+    # boxplot_generator(df2, 'Validation_method', 'MAE', 'metod walidacji')
+    #
+    # bar_plot(df, 'Validation_method')
+    # bar_plot(df1, 'Validation_method')
+    # bar_plot(df2, 'Validation_method')
+    # bar_plot(df, 'Hyper_param_method')
+    # bar_plot(df1, 'Hyper_param_method')
+    # bar_plot(df2, 'Hyper_param_method')
 
 
